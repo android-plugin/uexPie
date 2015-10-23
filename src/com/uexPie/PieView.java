@@ -9,23 +9,28 @@ import org.zywx.wbpalmstar.engine.universalex.EUExUtil;
 
 import com.uexPie.bean.PieBean;
 
-import android.app.Activity;
+import android.content.Context;
 import android.graphics.Point;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.widget.FrameLayout;
 
-public class PieActivity extends Activity {
+public class PieView extends FrameLayout {
 	ChartView mChartView;
+    private Context mContext;
 
 	int fontSize[] = new int[] { 20, 20, 20, 20, 20 };
 
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-	}
+    public PieView(Context context) {
+        super(context);
+        this.mContext = context;
+    }
+
 	public void setData(List<PieBean> pieList,int screenWidth, int screenHeight){
 		int centerX = screenWidth/2;
 		int centerY = screenHeight/2;
-		setContentView(EUExUtil.getResLayoutID("plugin_uexpie_view"));
+        LayoutInflater.from(mContext).inflate(EUExUtil.getResLayoutID("plugin_uexpie_view"),
+                this, true);
 		mChartView = (ChartView) this.findViewById(EUExUtil.getResIdID("plugin_uexpie_view_chartView"));
 		mChartView.setAntiAlias(true);
 		mChartView.setCenter(new Point(centerX, centerY));

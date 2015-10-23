@@ -1,7 +1,5 @@
 package com.uexPie;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -15,25 +13,22 @@ import org.zywx.wbpalmstar.engine.EBrowserView;
 import org.zywx.wbpalmstar.engine.universalex.EUExBase;
 
 import android.app.Activity;
-import android.app.ActivityGroup;
-import android.app.LocalActivityManager;
 import android.content.Context;
-import android.content.Intent;
-import android.util.DisplayMetrics;
+import android.os.Bundle;
+import android.os.Message;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.View;
-import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 
 import com.uexPie.bean.PieBean;
 
 public class EUExPie extends EUExBase {
-	static String opID = "0";
+    static String opID = "0";
 	static final String functionName = "uexPie.loadData";
 	static final String cbOpenFunName = "uexPie.cbOpen";
-	private PieActivity pieContext;
+	private PieView pieView;
 	public static final String TAG = "uexPie";
 
 	private int startX = 0;
@@ -42,6 +37,11 @@ public class EUExPie extends EUExBase {
 	public static int screenHeight = 0;
 	
 	private Map<String, View> map_activity;
+
+    private static final String BUNDLE_DATA = "data";
+    private static final int MSG_OPEN = 1;
+    private static final int MSG_CLOSE = 2;
+    private static final int MSG_SET_JSON_DATA = 3;
 
 	public EUExPie(Context context, EBrowserView arg1) {
 		super(context, arg1);
@@ -54,50 +54,83 @@ public class EUExPie extends EUExBase {
 		return false;
 	}
 
-	public void open(String[] params) {
-		opID = params[0];
-		if(map_activity.containsKey(opID)) {
-			return;
-		}
-		if (params[1].length() != 0) {
-			startX = Integer.parseInt(params[1]);
-		}
-		if (params[2].length() != 0) {
-			startY = Integer.parseInt(params[2]);
-		}
-		if (params[3].length() != 0) {
-			screenWidth = Integer.parseInt(params[3]);
-		}
-		if (params[4].length() != 0) {
-			screenHeight = Integer.parseInt(params[4]);
-		}
-		((Activity)mContext).runOnUiThread(new Runnable() {
-			
-			@Override
-			public void run() {
-				LocalActivityManager mgr = ((ActivityGroup) mContext)
-						.getLocalActivityManager();
-				Intent intent = new Intent(mContext, PieActivity.class);
-				Window window = mgr.startActivity(TAG + opID, intent);
-				pieContext = (PieActivity) window.getContext();
-				if (0 == screenWidth || 0 == screenHeight) {
-					Display display = pieContext.getWindowManager()
-							.getDefaultDisplay();
-					screenWidth = display.getWidth();
-					screenHeight = display.getHeight();
-				}
-				View pieDecorView = window.getDecorView();
-				RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
-						screenWidth, screenHeight);
-				lp.leftMargin = startX;
-				lp.topMargin = startY;
-				addView2CurrentWindow(pieDecorView, lp);
-				map_activity.put(opID, pieDecorView);
-			}
-		});
+    public void open(String[] params) {
+        if (params == null || params.length < 1) {
+            errorCallback(0, 0, "error params!");
+            return;
+        }
+        Message msg = new Message();
+        msg.obj = this;
+        msg.what = MSG_OPEN;
+        Bundle bd = new Bundle();
+        bd.putStringArray(BUNDLE_DATA, params);
+        msg.setData(bd);
+        mHandler.sendMessage(msg);
+    }
 
-		loadData(opID);
-	}
+    private void openMsg(String[] params) {
+        opID = params[0];
+        if(map_activity.containsKey(opID)) {
+            return;
+        }
+        if (params[1].length() != 0) {
+            startX = Integer.parseInt(params[1]);
+        }
+        if (params[2].length() != 0) {
+            startY = Integer.parseInt(params[2]);
+        }
+        if (params[3].length() != 0) {
+            screenWidth = Integer.parseInt(params[3]);
+        }
+        if (params[4].length() != 0) {
+            screenHeight = Integer.parseInt(params[4]);
+        }
+
+        pieView = new PieView(mContext);
+
+//        if (0 == screenWidth || 0 == screenHeight) {
+//            Display display = ((Activity) mContext).getWindowManager()
+//                    .getDefaultDisplay();
+//            screenWidth = display.getWidth();
+//            screenHeight = display.getHeight();
+//        }
+        RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
+                screenWidth, screenHeight);
+        lp.leftMargin = startX;
+        lp.topMargin = startY;
+        addView2CurrentWindow(pieView, lp);
+        map_activity.put(opID, pieView);
+
+        loadData(opID);
+    }
+
+    public void close(String[] params) {
+        if (params == null || params.length < 1) {
+            errorCallback(0, 0, "error params!");
+            return;
+        }
+        Message msg = new Message();
+        msg.obj = this;
+        msg.what = MSG_CLOSE;
+        Bundle bd = new Bundle();
+        bd.putStringArray(BUNDLE_DATA, params);
+        msg.setData(bd);
+        mHandler.sendMessage(msg);
+    }
+
+    private void closeMsg(String[] params) {
+        if (!map_activity.isEmpty()) {
+            Set<Entry<String, View>> entrySet = map_activity.entrySet();
+            Iterator<Entry<String, View>> iterator = entrySet.iterator();
+            while (iterator.hasNext()) {
+                Entry<String, View> entry = iterator.next();
+                View view = entry.getValue();
+                removeViewFromCurrentWindow(view);
+            }
+            map_activity.clear();
+        }
+    }
+
 
 	private void addView2CurrentWindow(View child, RelativeLayout.LayoutParams parms) {
 		int l = (int) (parms.leftMargin);
@@ -117,89 +150,50 @@ public class EUExPie extends EUExBase {
 		jsCallback(cbOpenFunName, Integer.parseInt(opID), 0, 0);
 	}
 
-	public void close(String[] params) {
-		((Activity)mContext).runOnUiThread(new Runnable() {
-			
-			@Override
-			public void run() {
-				if (!map_activity.isEmpty()) {
-					Set<Entry<String,View>> entrySet = map_activity.entrySet();
-					Iterator<Entry<String, View>> iterator = entrySet.iterator();
-					while (iterator.hasNext()) {
-						Entry<String, View> entry = iterator.next();
-						String activityId = entry.getKey();
-						View view = entry.getValue();
-						destroy(((ActivityGroup) mContext), TAG+activityId);
-						removeViewFromCurrentWindow(view);
-					}
-					map_activity.clear();
-				}
-			}
-		});
-	}
+    public void setJsonData(String[] params) {
+        if (params == null || params.length < 1) {
+            errorCallback(0, 0, "error params!");
+            return;
+        }
+        Message msg = new Message();
+        msg.obj = this;
+        msg.what = MSG_SET_JSON_DATA;
+        Bundle bd = new Bundle();
+        bd.putStringArray(BUNDLE_DATA, params);
+        msg.setData(bd);
+        mHandler.sendMessage(msg);
+    }
 
-	public void setJsonData(String[] params) {
+	public void setJsonDataMsg(String[] params) {
 		try {
 			JSONObject json = new JSONObject(params[0]);
 			String jsonResult = json.getString("data");
 			final List<PieBean> pieList = PieUtility.parseData(jsonResult);
-			((Activity)mContext).runOnUiThread(new Runnable() {
-
-				@Override
-				public void run() {
-					pieContext.setData(pieList, screenWidth, screenHeight);
-				}
-			});
+            pieView.setData(pieList, screenWidth, screenHeight);
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
 	}
 
-	public static boolean destroy(ActivityGroup activityGroup, String id) {
-		final LocalActivityManager activityManager = activityGroup
-				.getLocalActivityManager();
-		if (activityManager != null) {
-			activityManager.destroyActivity(id, false);
-			try {
-				final Field mActivitiesField = LocalActivityManager.class
-						.getDeclaredField("mActivities");
-				if (mActivitiesField != null) {
-					mActivitiesField.setAccessible(true);
-					@SuppressWarnings("unchecked")
-					final Map<String, Object> mActivities = (Map<String, Object>) mActivitiesField
-							.get(activityManager);
-					if (mActivities != null) {
-						mActivities.remove(id);
-					}
-					final Field mActivityArrayField = LocalActivityManager.class
-							.getDeclaredField("mActivityArray");
-					if (mActivityArrayField != null) {
-						mActivityArrayField.setAccessible(true);
-						@SuppressWarnings("unchecked")
-						final ArrayList<Object> mActivityArray = (ArrayList<Object>) mActivityArrayField
-								.get(activityManager);
-						if (mActivityArray != null) {
-							for (Object record : mActivityArray) {
-								final Field idField = record.getClass()
-										.getDeclaredField("id");
-								if (idField != null) {
-									idField.setAccessible(true);
-									final String _id = (String) idField
-											.get(record);
-									if (id.equals(_id)) {
-										mActivityArray.remove(record);
-										break;
-									}
-								}
-							}
-						}
-					}
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			return true;
-		}
-		return false;
-	}
+    @Override
+    public void onHandleMessage(Message message) {
+        if(message == null){
+            return;
+        }
+        Bundle bundle=message.getData();
+        switch (message.what) {
+
+            case MSG_OPEN:
+                openMsg(bundle.getStringArray(BUNDLE_DATA));
+                break;
+            case MSG_CLOSE:
+                closeMsg(bundle.getStringArray(BUNDLE_DATA));
+                break;
+            case MSG_SET_JSON_DATA:
+                setJsonDataMsg(bundle.getStringArray(BUNDLE_DATA));
+                break;
+            default:
+                super.onHandleMessage(message);
+        }
+    }
 }
