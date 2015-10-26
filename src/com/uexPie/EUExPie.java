@@ -74,16 +74,16 @@ public class EUExPie extends EUExBase {
             return;
         }
         if (params[1].length() != 0) {
-            startX = Integer.parseInt(params[1]);
+            startX = (int) Double.parseDouble(params[1]);
         }
         if (params[2].length() != 0) {
-            startY = Integer.parseInt(params[2]);
+            startY = (int) Double.parseDouble(params[2]);
         }
         if (params[3].length() != 0) {
-            screenWidth = Integer.parseInt(params[3]);
+            screenWidth = (int) Double.parseDouble(params[3]);
         }
         if (params[4].length() != 0) {
-            screenHeight = Integer.parseInt(params[4]);
+            screenHeight = (int) Double.parseDouble(params[4]);
         }
 
         pieView = new PieView(mContext);
@@ -105,10 +105,6 @@ public class EUExPie extends EUExBase {
     }
 
     public void close(String[] params) {
-        if (params == null || params.length < 1) {
-            errorCallback(0, 0, "error params!");
-            return;
-        }
         Message msg = new Message();
         msg.obj = this;
         msg.what = MSG_CLOSE;
